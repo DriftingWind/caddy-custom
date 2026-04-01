@@ -1,0 +1,37 @@
+name: Build Caddy Custom
+
+on:
+  push:
+    branches: [ "main" ]  # 当你往 main 分支推送代码时触发编译
+  workflow_dispatch:      # 允许你在网页上手动点按钮触发编译
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+
+      - name: 安装 xcaddy 并编译
+        run: |
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+          # 核心命令：在这里修改你需要添加的插件
+          ~/go/bin/xcaddy build \
+            --output caddy-linux-amd64 \
+            --with github.com/mastercactapus/caddy2-proxyprotocol \
+            --with github.com/porech/caddy-maxmind-geolocation@v1.0.1
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+
+      - name: 上传文件到 Actions 结果页
+        uses: actions/upload-artifact@v4
+        with:
+          name: caddy-binary
+          path: caddy-linux-amd64
