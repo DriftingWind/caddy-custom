@@ -1,21 +1,21 @@
 name: Build Caddy Custom
 
 on:
-  push:
-    branches: [ "main" ]  # 当你往 main 分支推送代码时触发编译
-  workflow_dispatch:      # 允许你在网页上手动点按钮触发编译
+  #push:
+  #  branches: [ "main" ]  # 当你往 main 分支推送代码时触发编译
+  workflow_dispatch:
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 安装 Go 环境
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.26.4'
+          go-version: 'stable'
 
       - name: 安装 xcaddy 并编译
         run: |
@@ -25,12 +25,17 @@ jobs:
             --output caddy-linux-amd64 \
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
-            
-          ./caddy-linux-amd64 -v
+
+          # 查看编译后的模组列表
           ./caddy-linux-amd64 list-modules
 
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+
       - name: 上传文件到 Actions 结果页
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: caddy-binary
           path: caddy-linux-amd64
