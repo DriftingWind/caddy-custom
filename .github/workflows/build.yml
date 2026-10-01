@@ -26,9 +26,12 @@ jobs:
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
 
+          # 查看编译信息
+          ./caddy-linux-amd64 build-info
+
           # 查看编译后的模组列表
           ./caddy-linux-amd64 list-modules
-
+    
         env:
           GOOS: linux
           GOARCH: amd64
