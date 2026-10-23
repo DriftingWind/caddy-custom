@@ -1,44 +1,61 @@
-name: Build Caddy Custom
+name: Build Caddy Custom (Linux/Windows)
 
 on:
   #push:
-  #  branches: [ "main" ]  # 当你往 main 分支推送代码时触发编译
+  #  branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false # 其中一个失败不影响另一个继续构建
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            output_name: caddy
+          - os: windows
+            arch: amd64
+            output_name: caddy.exe
+
     steps:
       - name: 检出代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 安装 Go 环境
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: 'stable'
 
-      - name: 安装 xcaddy 并编译
+      - name: 安装 xcaddy
+        id: install-xcaddy
         run: |
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-          # 核心命令：在这里修改你需要添加的插件
-          ~/go/bin/xcaddy build \
-            --output caddy-linux-amd64 \
+
+          # 获取 Caddy 版本号，获取失败则以 latest 代替
+          CADDY_VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+          CADDY_VERSION=${CADDY_VERSION:-latest}
+
+          echo "caddy_version=$CADDY_VERSION" >> $GITHUB_OUTPUT
+
+      - name: 添加插件编译
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+
+          xcaddy build \
+            --output ${{ matrix.output_name }} \
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
 
-          # 查看编译信息
-          ./caddy-linux-amd64 build-info
-
-          # 查看编译后的模组列表
-          ./caddy-linux-amd64 list-modules
-    
         env:
-          GOOS: linux
-          GOARCH: amd64
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 0
 
-      - name: 上传文件到 Actions 结果页
+      - name: 上传编译产物到 Actions 结果页
         uses: actions/upload-artifact@v7
         with:
-          name: caddy-binary
-          path: caddy-linux-amd64
+          name: caddy_custom_${{ steps.install-xcaddy.outputs.caddy_version }}_${{ matrix.os }}_${{ matrix.arch }}
+          path: ${{ matrix.output_name }}
