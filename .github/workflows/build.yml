@@ -1,13 +1,24 @@
-name: Build Caddy Custom
+name: Build Caddy Custom (Linux/Windows)
 
 on:
   #push:
-  #  branches: [ "main" ]  # 当你往 main 分支推送代码时触发编译
+  #  branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            output_name: caddy-linux-amd64
+          - os: windows
+            arch: amd64
+            output_name: caddy-windows-amd64.exe
+
     steps:
       - name: 检出代码
         uses: actions/checkout@v6
@@ -15,14 +26,13 @@ jobs:
       - name: 安装 Go 环境
         uses: actions/setup-go@v6
         with:
-          go-version: 'stable'
+          go-version: "stable"
 
-      - name: 安装 xcaddy 并编译
+      - name: 安装 xcaddy 并编译 (${{ matrix.os }}/${{ matrix.arch }})
         run: |
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-          # 核心命令：在这里修改你需要添加的插件
           ~/go/bin/xcaddy build \
-            --output caddy-linux-amd64 \
+            --output ${{ matrix.output_name }} \
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
 
@@ -31,14 +41,13 @@ jobs:
 
           # 查看编译后的模组列表
           ./caddy-linux-amd64 list-modules
-    
         env:
-          GOOS: linux
-          GOARCH: amd64
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 0
 
-      - name: 上传文件到 Actions 结果页
+      - name: 上传编译产物到 Actions 结果页
         uses: actions/upload-artifact@v7
         with:
-          name: caddy-binary
-          path: caddy-linux-amd64
+          name: caddy-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ matrix.output_name }}
