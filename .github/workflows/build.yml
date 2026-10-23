@@ -15,39 +15,40 @@ jobs:
         include:
           - os: linux
             arch: amd64
-            output_name: caddy-linux-amd64
+            output_name: caddy
           - os: windows
             arch: amd64
-            output_name: caddy-windows-amd64.exe
+            output_name: caddy.exe
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: 安装 Go 环境
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: "stable"
+          go-version: 'stable'
 
-      - name: 安装 xcaddy 并编译 (${{ matrix.os }}/${{ matrix.arch }})
+      - name: 安装 xcaddy
+        id: install-xcaddy
         run: |
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
-          echo "=============== whereis process ============="
+          # 获取 Caddy 版本号，获取失败则以 latest 代替
+          CADDY_VERSION=$(curl -s https://api.github.com/repos/caddyserver/caddy/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+          CADDY_VERSION=${CADDY_VERSION:-latest}
 
-          whereis xcaddy
+          echo "caddy_version=$CADDY_VERSION" >> $GITHUB_OUTPUT
 
-          echo "=============== xcaddy process ============="
+      - name: 添加插件编译
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+
           xcaddy build \
             --output ${{ matrix.output_name }} \
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
 
-          # 查看编译信息
-          ./caddy-linux-amd64 build-info
-
-          # 查看编译后的模组列表
-          ./caddy-linux-amd64 list-modules
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
@@ -56,5 +57,5 @@ jobs:
       - name: 上传编译产物到 Actions 结果页
         uses: actions/upload-artifact@v7
         with:
-          name: caddy-${{ matrix.os }}-${{ matrix.arch }}
+          name: caddy_custom_${{ steps.install-xcaddy.outputs.caddy_version }}_${{ matrix.os }}_${{ matrix.arch }}
           path: ${{ matrix.output_name }}
