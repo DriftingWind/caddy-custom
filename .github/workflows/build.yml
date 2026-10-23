@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false # 其中一个失败不影响另一个继续构建
       matrix:
         include:
           - os: linux
@@ -32,8 +33,11 @@ jobs:
         run: |
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
-          export PATH=$PATH:$(go env GOPATH)/bin
+          echo "=============== whereis process ============="
 
+          whereis xcaddy
+
+          echo "=============== xcaddy process ============="
           xcaddy build \
             --output ${{ matrix.output_name }} \
             --with github.com/caddy-dns/cloudflare \
