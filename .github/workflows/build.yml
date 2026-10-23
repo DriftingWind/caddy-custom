@@ -31,7 +31,10 @@ jobs:
       - name: 安装 xcaddy 并编译 (${{ matrix.os }}/${{ matrix.arch }})
         run: |
           go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-          ~/go/bin/xcaddy build \
+
+          export PATH=$PATH:$(go env GOPATH)/bin
+
+          xcaddy build \
             --output ${{ matrix.output_name }} \
             --with github.com/caddy-dns/cloudflare \
             --with github.com/porech/caddy-maxmind-geolocation
